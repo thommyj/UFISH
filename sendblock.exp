@@ -1,0 +1,79 @@
+#!/usr/bin/expect
+
+#set PROMPT ">>"
+set PROMPT "xthojak"
+set ENTER "\r\n"
+
+#check number of arguments
+if {[llength $argv] != 3} {
+  puts stderr "usage <tty> <cmdfile> <startadress>"
+  exit 1
+}
+
+set tty [lindex $argv 0]
+set cmdfile [lindex $argv 1]
+set startaddress [lindex $argv 2]
+
+puts "$tty $cmdfile $startaddress"
+#spawn picocom -b 115200 $tty
+spawn /bin/bash
+
+#loop until prompt
+set timeout 10
+set count 3
+while {1} {
+  send $ENTER
+  expect {
+    $PROMPT {
+      break
+    }
+    timeout {
+      if { $count==0 } {
+        puts stderr "no prompt, exiting!"
+        exit 1
+      }
+      puts stderr "timeout waiting for prompt, trying again"
+      set count [expr $count - 1]
+    }
+  }
+}
+
+#set base
+send "base $startaddress"
+send $ENTER
+  expect {
+    $PROMPT {
+    }
+    timeout {
+      puts stderr "no prompt after sending base cmd, exiting!"
+      exit 2
+    }
+  }
+
+
+#loop through file
+set fh [open $cmdfile RDONLY]
+while {[gets $fh read_line] != -1} {
+  send "$read_line\r\n"
+  send $ENTER
+  expect {
+    $PROMPT {
+    }
+    timeout {
+      puts stderr "no prompt after sending data, exiting!"
+      exit 3
+    }
+  }
+}
+
+close $fh
+
+#todo calculate and return crc (or loop here?)
+
+exit 0
+
+
+
+
+
+
