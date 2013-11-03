@@ -1,8 +1,6 @@
 #!/usr/bin/expect
 
-#set PROMPT ">>"
-set PROMPT "xthojak"
-set ENTER "\r\n"
+set PROMPT ">>"
 
 #check number of arguments
 if {[llength $argv] != 4} {
@@ -16,14 +14,20 @@ set startaddress [lindex $argv 2]
 set size [lindex $argv 3]
 
 puts "$tty $outfile $startaddress $size"
+
+#TODO, change this
 #spawn picocom -b 115200 $tty
 spawn "/bin/bash"
+sleep 4
+send "PS1=\">>\""
+sleep 4
 
 #loop until prompt
+puts stdout "waiting for prompt..\n"
 set timeout 10
 set count 3
 while {1} {
-  send $ENTER
+  send "\n"
   expect {
     $PROMPT {
       break
@@ -38,10 +42,15 @@ while {1} {
     }
   }
 }
+#clear buffer
+expect "*"
+
+#TODO, set base?
 
 #set timeout high, receive is slow
 set timeout 100
-send "md.b $startaddress $size\r\n"
+send "md.b $startaddress $size\n"
+sleep 1
 expect {
     $PROMPT {
     }
@@ -52,10 +61,8 @@ expect {
  }
 
 #write to file
-sleep 1
-set outcome $expect_out(0,string)
 set fh [open $outfile w]
-puts -nonewline $fh $outcome
+puts $fh $expect_out(buffer)
 close $fh
 
 
