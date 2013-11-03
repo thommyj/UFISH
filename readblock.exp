@@ -1,0 +1,70 @@
+#!/usr/bin/expect
+
+#set PROMPT ">>"
+set PROMPT "xthojak"
+set ENTER "\r\n"
+
+#check number of arguments
+if {[llength $argv] != 4} {
+  puts stderr "usage <tty> <outfile> <startadress> <size>"
+  exit 1
+}
+
+set tty [lindex $argv 0]
+set outfile [lindex $argv 1]
+set startaddress [lindex $argv 2]
+set size [lindex $argv 3]
+
+puts "$tty $outfile $startaddress $size"
+#spawn picocom -b 115200 $tty
+spawn "/bin/bash"
+
+#loop until prompt
+set timeout 10
+set count 3
+while {1} {
+  send $ENTER
+  expect {
+    $PROMPT {
+      break
+    }
+    timeout {
+      if { $count==0 } {
+        puts stderr "no prompt, exiting!"
+        exit 1
+      }
+      puts stderr "timeout waiting for prompt, trying again"
+      set count [expr $count - 1]
+    }
+  }
+}
+
+#set timeout high, receive is slow
+set timeout 100
+send "md.b $startaddress $size\r\n"
+expect {
+    $PROMPT {
+    }
+    timeout {
+      puts stderr "no prompt after memory display, exiting!"
+        exit 1
+      }
+ }
+
+#write to file
+sleep 1
+set outcome $expect_out(0,string)
+set fh [open $outfile w]
+puts -nonewline $fh $outcome
+close $fh
+
+
+#todo calculate and return crc (or loop here?)
+#todo shutdown spawn necessary?
+exit 0
+
+
+
+
+
+
